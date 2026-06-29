@@ -3,6 +3,7 @@
   const imageEl = document.getElementById('display-image');
   const noImageEl = document.getElementById('no-image-msg');
   const soundOverlay = document.getElementById('enable-sound-overlay');
+  const soundOverlayText = document.getElementById('enable-sound-text');
 
   // ---- Audio (uploaded chime file) ----
   const chimeAudio = new Audio('/sounds/chime.mp3');
@@ -21,6 +22,7 @@
 
   function unlockAudio() {
     if (audioUnlocked) return;
+    audioUnlocked = true; // set immediately so a second rapid tap can't double-fire
     // Play once (muted) so the browser counts this as the user gesture that
     // unlocks audio - later programmatic play() calls then work without a
     // fresh gesture each time.
@@ -35,13 +37,22 @@
         chimeAudio.muted = false;
       })
       .finally(() => {
-        audioUnlocked = true;
-        soundOverlay.classList.add('hidden');
         keepAliveAudio.play().catch(() => {});
+        // Visible confirmation it worked, instead of the overlay just
+        // silently vanishing - then hide it a moment later.
+        soundOverlayText.textContent = 'Sound enabled';
+        soundOverlay.classList.add('confirmed');
+        setTimeout(() => soundOverlay.classList.add('hidden'), 700);
       });
   }
 
+  // Listen on the overlay itself, and also on the whole document (capture
+  // phase) as a fallback in case anything ever stops the click from
+  // reaching the overlay - any tap/click/keypress anywhere unlocks audio.
   soundOverlay.addEventListener('click', unlockAudio);
+  document.addEventListener('click', unlockAudio, true);
+  document.addEventListener('touchstart', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
 
   function playCallChime() {
     if (!audioUnlocked) return;

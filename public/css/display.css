@@ -195,6 +195,10 @@ html, body {
   color: #9fb0d9;
 }
 
+#enable-sound-overlay.confirmed #enable-sound-box p {
+  color: #6cf0a4;
+}
+
 #enable-sound-overlay.hidden {
   display: none;
 }
