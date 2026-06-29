@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Display Settings - Klinik Alfa</title>
+<link rel="stylesheet" href="/css/doctor.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Display Settings</h1>
+  <button id="logout-btn" class="hidden">Logout</button>
+</header>
+
+<main>
+  <!-- Password screen -->
+  <section id="login-screen" class="card">
+    <h2>Enter admin password</h2>
+    <label>Password</label>
+    <input type="password" id="password" />
+    <p id="login-error" class="error hidden"></p>
+    <button id="login-btn">Unlock</button>
+  </section>
+
+  <!-- Upload screen -->
+  <section id="panel-screen" class="card hidden">
+    <p class="label">Current display image</p>
+    <img id="preview" alt="No image uploaded yet" />
+
+    <label>Upload new image</label>
+    <input type="file" id="file-input" accept="image/*" />
+
+    <button id="upload-btn">Upload &amp; Show on Display</button>
+    <p id="upload-status"></p>
+  </section>
+</main>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>

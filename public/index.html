@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Klinik Alfa - Now Serving</title>
+<link rel="stylesheet" href="/css/display.css" />
+</head>
+<body>
+
+<div id="enable-sound-overlay">
+  <div id="enable-sound-box">
+    <p>Tap anywhere to start the display</p>
+    <p class="hint">(needed once so the call sound can play)</p>
+  </div>
+</div>
+
+<div class="display-wrap">
+  <div class="image-panel">
+    <img id="display-image" src="" alt="" />
+    <div id="no-image-msg">No display image uploaded yet</div>
+  </div>
+
+  <div class="serving-panel">
+    <h1>NOW SERVING</h1>
+    <div class="brand-bar"></div>
+
+    <div id="rows"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/display.js"></script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chime Sound Options - Klinik Alfa</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #eef1f7;
+    padding: 40px 20px;
+  }
+  h1 { color: #11214b; margin-bottom: 6px; }
+  p.sub { color: #7c8aa8; margin-bottom: 30px; }
+  .options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 960px;
+  }
+  .option {
+    background: #fff;
+    border: 1.5px solid #d7dbe8;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 4px 14px rgba(17, 33, 75, 0.08);
+  }
+  .option h2 {
+    color: #11214b;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+  }
+  .option p {
+    color: #6b7a99;
+    font-size: 0.9rem;
+    margin-bottom: 14px;
+    min-height: 40px;
+  }
+  .option button {
+    width: 100%;
+    background: linear-gradient(135deg, #29a9e1, #ec1e79);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .option button:active { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<h1>Chime Sound Options</h1>
+<p class="sub">Click each button to play that option (you can click as many times as you like). Tell me the number/name of the one you want to use on the display screen, or describe a tweak.</p>
+
+<div class="options">
+  <div class="option">
+    <h2>1. Current (soft, for reference)</h2>
+    <p>What's live now - ding=C6, dong=G5, lower volume.</p>
+    <button onclick="playDingDong(1046.5, 783.99, 0.6, 0.18, 'sine')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>2. Louder &amp; Higher Ding-Dong</h2>
+    <p>Same melody shape, shifted up to G6/E6 and noticeably louder.</p>
+    <button onclick="playDingDong(1567.98, 1318.51, 0.95, 0.3, 'sine')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>3. Very Bright Ding-Dong</h2>
+    <p>Even higher (C7/G6), loud - the brightest/most piercing of the ding-dong style.</p>
+    <button onclick="playDingDong(2093, 1567.98, 0.95, 0.3, 'sine')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>4. Triple Ascending Chime</h2>
+    <p>Three quick rising notes (C6-E6-G6) instead of two - common in PA/intercom systems.</p>
+    <button onclick="playTriple()">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>5. Sharp Alert (triangle wave)</h2>
+    <p>Same high two-tone melody but a sharper, more "electronic alert" timbre.</p>
+    <button onclick="playDingDong(1567.98, 1318.51, 0.95, 0.3, 'triangle')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>6. Loud Buzzer Beep</h2>
+    <p>Harsher double-beep (square wave) - most attention-grabbing, less "pleasant".</p>
+    <button onclick="playBuzz()">Play</button>
+  </div>
+</div>
+
+<h1 style="margin-top:40px;">More Ding-Dong Variations</h1>
+<p class="sub">All two-note "ding-dong" style, tuned for clarity and cutting through ambient noise.</p>
+
+<div class="options">
+  <div class="option">
+    <h2>7. Classic Doorbell</h2>
+    <p>The "ding-dong" interval most people instantly recognize (E6 down to C6), loud.</p>
+    <button onclick="playDingDong(1318.51, 1046.5, 0.95, 0.3, 'sine')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>8. Rich Harmonic Bell</h2>
+    <p>Adds a third harmonic layer (octave + fifth) for a fuller, more defined "bell" clarity.</p>
+    <button onclick="playRichDingDong()">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>9. Pure Clean Tone</h2>
+    <p>No overtone at all - just one strong, very loud sine per note. Less "musical", maximally clear/punchy.</p>
+    <button onclick="playDingDong(1567.98, 1318.51, 0.95, 0, 'sine')">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>10. Echo Ding-Dong</h2>
+    <p>Normal ding-dong plus a softer echo repeat right after, for a fuller "PA system" presence.</p>
+    <button onclick="playEchoDingDong()">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>11. Ding-Ding-Dong</h2>
+    <p>Two quick "dings" then a "dong" - the 3-hit pattern real pharmacy/bank queue systems often use.</p>
+    <button onclick="playDingDingDong()">Play</button>
+  </div>
+
+  <div class="option">
+    <h2>12. Big Bold Ding-Dong</h2>
+    <p>Highest pitch, loudest, fastest punchy attack - the most attention-grabbing two-tone option.</p>
+    <button onclick="playDingDong(2349.32, 1975.53, 1.0, 0.32, 'sine')">Play</button>
+  </div>
+</div>
+
+<script>
+  let audioCtx = null;
+  function ctx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, startTime, duration, peakGain, type) {
+    const c = ctx();
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.frequency.value = freq;
+    osc.type = type || 'sine';
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.05);
+  }
+
+  function bellTone(freq, startTime, duration, peakGain, overtoneGain, type) {
+    playTone(freq, startTime, duration, peakGain, type);
+    playTone(freq * 2, startTime, duration * 0.6, overtoneGain, type);
+  }
+
+  function playDingDong(ding, dong, gain, overtone, type) {
+    const now = ctx().currentTime;
+    bellTone(ding, now, 0.45, gain, overtone, type);
+    bellTone(dong, now + 0.42, 0.65, gain, overtone, type);
+  }
+
+  function playTriple() {
+    const now = ctx().currentTime;
+    [1046.5, 1318.51, 1567.98].forEach((freq, i) => {
+      bellTone(freq, now + i * 0.22, 0.35, 0.9, 0.25, 'sine');
+    });
+  }
+
+  function playBuzz() {
+    const now = ctx().currentTime;
+    [0, 0.3].forEach((offset) => {
+      playTone(1500, now + offset, 0.2, 0.8, 'square');
+    });
+  }
+
+  // fundamental + octave + perfect-fifth-above-octave, for a fuller "bell" timbre
+  function richTone(freq, startTime, duration, peakGain) {
+    playTone(freq, startTime, duration, peakGain, 'sine');
+    playTone(freq * 2, startTime, duration * 0.7, peakGain * 0.35, 'sine');
+    playTone(freq * 3, startTime, duration * 0.5, peakGain * 0.15, 'sine');
+  }
+
+  function playRichDingDong() {
+    const now = ctx().currentTime;
+    richTone(1567.98, now, 0.5, 0.65);
+    richTone(1318.51, now + 0.42, 0.7, 0.65);
+  }
+
+  function playEchoDingDong() {
+    const now = ctx().currentTime;
+    bellTone(1567.98, now, 0.45, 0.95, 0.3, 'sine');
+    bellTone(1318.51, now + 0.42, 0.65, 0.95, 0.3, 'sine');
+    bellTone(1567.98, now + 0.95, 0.4, 0.45, 0.15, 'sine');
+    bellTone(1318.51, now + 1.32, 0.55, 0.45, 0.15, 'sine');
+  }
+
+  function playDingDingDong() {
+    const now = ctx().currentTime;
+    bellTone(1567.98, now, 0.3, 0.9, 0.28, 'sine');
+    bellTone(1567.98, now + 0.26, 0.3, 0.9, 0.28, 'sine');
+    bellTone(1318.51, now + 0.52, 0.7, 0.9, 0.28, 'sine');
+  }
+</script>
+</body>
+</html>
