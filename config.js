@@ -22,4 +22,12 @@ module.exports = {
 
   // How many rows of call history the display screen shows
   maxHistoryRows: 4,
+
+  // Optional - if both are set, queue history/room status survive restarts
+  // by persisting to Upstash Redis (free tier). If unset, the app just runs
+  // in-memory only (fine for local testing).
+  upstash: {
+    url: process.env.UPSTASH_REDIS_REST_URL || '',
+    token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+  },
 };

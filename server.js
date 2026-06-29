@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const { Server } = require('socket.io');
+const { Redis } = require('@upstash/redis');
 
 const config = require('./config');
 
@@ -15,6 +16,37 @@ fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const app = express();
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR));
+
+// ---- Persistence (optional) ---------------------------------------------
+// If Upstash credentials are configured, queue history/room status survive
+// restarts (important on hosts like Render where local disk/memory resets
+// on every restart). Without them, the app just runs in-memory only.
+const STATE_KEY = 'alfa-queue:state';
+const redis = config.upstash.url && config.upstash.token
+  ? new Redis({ url: config.upstash.url, token: config.upstash.token })
+  : null;
+
+function persistState() {
+  if (!redis) return;
+  redis.set(STATE_KEY, JSON.stringify({ history, lastCallByRoom })).catch((err) => {
+    console.error('Failed to persist queue state:', err.message);
+  });
+}
+
+async function loadState() {
+  if (!redis) return;
+  try {
+    const saved = await redis.get(STATE_KEY);
+    if (saved) {
+      const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
+      history = parsed.history || [];
+      Object.assign(lastCallByRoom, parsed.lastCallByRoom || {});
+      console.log(`Loaded persisted queue state (${history.length} history entries)`);
+    }
+  } catch (err) {
+    console.error('Failed to load persisted queue state:', err.message);
+  }
+}
 
 // ---- In-memory state -------------------------------------------------
 // history: newest call first. Each entry: { id, room, number, timestamp }
@@ -121,6 +153,7 @@ io.on('connection', (socket) => {
     history.unshift(entry);
     if (history.length > HISTORY_LIMIT) history.length = HISTORY_LIMIT;
     lastCallByRoom[room] = { id: entry.id, number: entry.number };
+    persistState();
 
     io.emit('queue-update', { top3: top3(), justCalledId: entry.id });
     io.emit('room-status', { room, number: entry.number });
@@ -137,13 +170,14 @@ io.on('connection', (socket) => {
     lastCallByRoom[room] = nextForRoom
       ? { id: nextForRoom.id, number: nextForRoom.number }
       : undefined;
+    persistState();
 
     io.emit('queue-update', { top3: top3(), justCalledId: null });
     io.emit('room-status', { room, number: roomNumber(room) });
   });
 });
 
-server.listen(config.port, '0.0.0.0', () => {
+loadState().then(() => server.listen(config.port, '0.0.0.0', () => {
   console.log(`Alfa Queue System running on port ${config.port}`);
   console.log('Open on this machine:');
   console.log(`  Display:      http://localhost:${config.port}/`);
@@ -161,4 +195,4 @@ server.listen(config.port, '0.0.0.0', () => {
     console.log('\nFrom other devices on the same network, use:');
     lanAddresses.forEach((ip) => console.log(`  http://${ip}:${config.port}/`));
   }
-});
+}));
