@@ -1,5 +1,4 @@
 const path = require('path');
-const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const express = require('express');
@@ -10,18 +9,18 @@ const { Redis } = require('@upstash/redis');
 const config = require('./config');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const UPLOADS_DIR = path.join(PUBLIC_DIR, 'uploads');
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR));
 
 // ---- Persistence (optional) ---------------------------------------------
-// If Upstash credentials are configured, queue history/room status survive
-// restarts (important on hosts like Render where local disk/memory resets
-// on every restart). Without them, the app just runs in-memory only.
+// If Upstash credentials are configured, queue history/room status/display
+// image survive restarts (important on hosts like Render where local
+// disk/memory resets on every restart). Without them, the app just runs
+// in-memory only.
 const STATE_KEY = 'alfa-queue:state';
+const IMAGE_KEY = 'alfa-queue:display-image';
 const redis = config.upstash.url && config.upstash.token
   ? new Redis({ url: config.upstash.url, token: config.upstash.token })
   : null;
@@ -30,6 +29,13 @@ function persistState() {
   if (!redis) return;
   redis.set(STATE_KEY, JSON.stringify({ history, lastCallByRoom })).catch((err) => {
     console.error('Failed to persist queue state:', err.message);
+  });
+}
+
+function persistImage() {
+  if (!redis) return;
+  redis.set(IMAGE_KEY, JSON.stringify(currentImage)).catch((err) => {
+    console.error('Failed to persist display image:', err.message);
   });
 }
 
@@ -46,6 +52,16 @@ async function loadState() {
   } catch (err) {
     console.error('Failed to load persisted queue state:', err.message);
   }
+
+  try {
+    const savedImage = await redis.get(IMAGE_KEY);
+    if (savedImage) {
+      currentImage = typeof savedImage === 'string' ? JSON.parse(savedImage) : savedImage;
+      console.log('Loaded persisted display image');
+    }
+  } catch (err) {
+    console.error('Failed to load persisted display image:', err.message);
+  }
 }
 
 // ---- In-memory state -------------------------------------------------
@@ -56,8 +72,8 @@ const HISTORY_LIMIT = 100;
 // lastCallByRoom[room] = { id, number } | undefined
 const lastCallByRoom = {};
 
-// currently uploaded display image, relative to /uploads
-let currentImageFile = null;
+// currently uploaded display image: { mimeType, data (base64) } | null
+let currentImage = null;
 
 function top3() {
   return history.slice(0, config.maxHistoryRows);
@@ -103,31 +119,44 @@ app.get('/api/room-status/:room', (req, res) => {
 });
 
 app.get('/api/current-image', (req, res) => {
-  if (!currentImageFile) return res.json({ url: null });
-  res.json({ url: `/uploads/${currentImageFile}?t=${Date.now()}` });
+  if (!currentImage) return res.json({ url: null });
+  res.json({ url: `/api/display-image?t=${Date.now()}` });
 });
 
-const upload = multer({ dest: UPLOADS_DIR });
+app.get('/api/display-image', (req, res) => {
+  if (!currentImage) return res.status(404).end();
+  res.set('Content-Type', currentImage.mimeType);
+  res.set('Cache-Control', 'no-cache');
+  res.send(Buffer.from(currentImage.data, 'base64'));
+});
 
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ ok: false, error: 'No file uploaded' });
-  }
+// Kept in memory (and persisted to Upstash, not disk) so the uploaded image
+// survives restarts on hosts with ephemeral filesystems.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+});
 
-  const ext = path.extname(req.file.originalname) || '';
-  const newFilename = req.file.filename + ext;
-  fs.renameSync(req.file.path, path.join(UPLOADS_DIR, newFilename));
+app.post('/api/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'Image too large (max 2MB)' : 'Upload failed';
+      return res.status(400).json({ ok: false, error: message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'No file uploaded' });
+    }
 
-  const previousFile = currentImageFile;
-  currentImageFile = newFilename;
+    currentImage = {
+      mimeType: req.file.mimetype,
+      data: req.file.buffer.toString('base64'),
+    };
+    persistImage();
 
-  if (previousFile) {
-    fs.unlink(path.join(UPLOADS_DIR, previousFile), () => {});
-  }
-
-  const url = `/uploads/${currentImageFile}?t=${Date.now()}`;
-  io.emit('image-updated', { url });
-  res.json({ ok: true, url });
+    const url = `/api/display-image?t=${Date.now()}`;
+    io.emit('image-updated', { url });
+    res.json({ ok: true, url });
+  });
 });
 
 // ---- HTTP + Socket.IO ----------------------------------------------------
