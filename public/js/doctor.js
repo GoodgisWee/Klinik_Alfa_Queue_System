@@ -14,14 +14,39 @@
   const queueInput = document.getElementById('queue-input');
   const callBtn = document.getElementById('call-btn');
   const recallBtn = document.getElementById('recall-btn');
+  const callError = document.getElementById('call-error');
+  const roomStatusTbody = document.querySelector('#room-status-table tbody');
+
+  let allRooms = [];
+  const roomStatusMap = {};
+  const roomStatusTime = {};
 
   let socket = null;
   let myRoom = localStorage.getItem('alfa_room');
+
+  function playErrorSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.18].forEach((startOffset) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'square';
+        osc.frequency.value = 220;
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + startOffset);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + 0.14);
+        osc.start(ctx.currentTime + startOffset);
+        osc.stop(ctx.currentTime + startOffset + 0.14);
+      });
+    } catch (_) {}
+  }
 
   function loadRooms(selected) {
     return fetch('/api/rooms')
       .then((r) => r.json())
       .then(({ rooms }) => {
+        allRooms = rooms;
         roomSelect.innerHTML = '';
         rooms.forEach((room) => {
           const opt = document.createElement('option');
@@ -31,6 +56,53 @@
           roomSelect.appendChild(opt);
         });
       });
+  }
+
+  function renderRoomOverview() {
+    // Find numbers that appear in more than one room
+    const numberRooms = {};
+    allRooms.forEach((room) => {
+      const num = roomStatusMap[room];
+      if (!num) return;
+      if (!numberRooms[num]) numberRooms[num] = [];
+      numberRooms[num].push(room);
+    });
+    // For each duplicate number, the room with the latest timestamp is (current)
+    const roomTag = {};
+    Object.values(numberRooms).forEach((rooms) => {
+      if (rooms.length < 2) return;
+      const newest = rooms.reduce((a, b) =>
+        (roomStatusTime[a] || 0) >= (roomStatusTime[b] || 0) ? a : b
+      );
+      rooms.forEach((room) => {
+        roomTag[room] = room === newest ? 'current' : 'old';
+      });
+    });
+
+    roomStatusTbody.innerHTML = '';
+    allRooms.forEach((room) => {
+      const number = roomStatusMap[room] || '—';
+      const isMyRoom = room === myRoom;
+      const tag = roomTag[room];
+      const tagHtml = tag
+        ? `<span class="ov-tag ov-tag-${tag}">${tag}</span>`
+        : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="ov-room${isMyRoom ? ' ov-my-room' : ''}">${room}</td><td class="ov-number${number !== '—' ? ' ov-active' : ''}">${tagHtml}${number}</td>`;
+      roomStatusTbody.appendChild(tr);
+    });
+  }
+
+  function initRoomOverview() {
+    allRooms.forEach((room) => {
+      fetch(`/api/room-status/${encodeURIComponent(room)}`)
+        .then((r) => r.json())
+        .then(({ number }) => {
+          roomStatusMap[room] = number || null;
+          if (number) roomStatusTime[room] = Date.now();
+          renderRoomOverview();
+        });
+    });
   }
 
   function showLogin() {
@@ -47,6 +119,7 @@
     logoutBtn.classList.remove('hidden');
     connectSocket();
     refreshRoomStatus();
+    initRoomOverview();
   }
 
   function refreshRoomStatus() {
@@ -65,6 +138,15 @@
     socket = io();
     socket.on('room-status', (data) => {
       if (data.room === myRoom) updateCurrentNumber(data.number);
+      roomStatusMap[data.room] = data.number || null;
+      if (data.number) roomStatusTime[data.room] = Date.now();
+      renderRoomOverview();
+    });
+    socket.on('call-error', ({ message }) => {
+      callError.textContent = message;
+      callError.classList.remove('hidden');
+      setTimeout(() => callError.classList.add('hidden'), 5000);
+      playErrorSound();
     });
   }
 
@@ -98,6 +180,7 @@
   callBtn.addEventListener('click', () => {
     const number = queueInput.value.trim();
     if (!number || !socket) return;
+    callError.classList.add('hidden');
     socket.emit('call', { room: myRoom, number });
     queueInput.value = '';
     queueInput.focus();
@@ -105,6 +188,10 @@
 
   queueInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') callBtn.click();
+  });
+
+  queueInput.addEventListener('input', () => {
+    callError.classList.add('hidden');
   });
 
   recallBtn.addEventListener('click', () => {

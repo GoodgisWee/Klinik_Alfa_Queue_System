@@ -42,8 +42,17 @@
     <label>Enter Queue Number</label>
     <input type="text" id="queue-input" placeholder="e.g. 001" inputmode="numeric" />
 
+    <p id="call-error" class="error hidden"></p>
+
     <button id="call-btn">&#128226; Call</button>
     <button id="recall-btn" class="recall">&#10227; Recall</button>
+
+    <div id="room-overview">
+      <p class="label overview-title">All Rooms Status</p>
+      <table id="room-status-table">
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 </main>
 

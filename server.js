@@ -72,6 +72,10 @@ const HISTORY_LIMIT = 100;
 // lastCallByRoom[room] = { id, number } | undefined
 const lastCallByRoom = {};
 
+// Grace period: track when each queue number was last called { number: timestamp }
+const recentCallTimestamps = {};
+const GRACE_PERIOD_MS = 10000;
+
 // currently uploaded display image: { mimeType, data (base64) } | null
 let currentImage = null;
 
@@ -172,11 +176,23 @@ io.on('connection', (socket) => {
     const value = String(number || '').trim();
     if (!value) return;
 
+    const now = Date.now();
+    const lastCalled = recentCallTimestamps[value];
+    if (lastCalled && now - lastCalled < GRACE_PERIOD_MS) {
+      const remaining = Math.ceil((GRACE_PERIOD_MS - (now - lastCalled)) / 1000);
+      socket.emit('call-error', {
+        message: `Queue ${value} was just called. Please wait ${remaining}s before calling again.`,
+      });
+      return;
+    }
+
+    recentCallTimestamps[value] = now;
+
     const entry = {
       id: crypto.randomUUID(),
       room,
       number: value,
-      timestamp: Date.now(),
+      timestamp: now,
     };
 
     history.unshift(entry);

@@ -168,6 +168,85 @@ main {
   display: none !important;
 }
 
+#room-overview {
+  margin-top: 28px;
+  text-align: left;
+}
+
+.overview-title {
+  margin-top: 0 !important;
+  margin-bottom: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: var(--brand-navy);
+}
+
+#room-status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#room-status-table tr {
+  border-bottom: 1px solid #eef1f7;
+}
+
+#room-status-table tr:last-child {
+  border-bottom: none;
+}
+
+.ov-room {
+  padding: 8px 4px;
+  color: #8a8fa3;
+  font-size: 0.95rem;
+  width: 60%;
+}
+
+.ov-my-room {
+  color: var(--brand-navy);
+  font-weight: 600;
+}
+
+.ov-number {
+  padding: 8px 4px;
+  text-align: right;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #c0c5d8;
+}
+
+.ov-active {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ov-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.ov-tag-current {
+  background: #e6f7ff;
+  color: var(--brand-blue);
+  border: 1px solid var(--brand-blue);
+}
+
+.ov-tag-old {
+  background: #f1f3f8;
+  color: #8a8fa3;
+  border: 1px solid #c7d2e8;
+}
+
 #preview {
   display: block;
   max-width: 100%;
