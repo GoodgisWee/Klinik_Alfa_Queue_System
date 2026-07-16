@@ -5,45 +5,25 @@
   const soundOverlay = document.getElementById('enable-sound-overlay');
   const soundOverlayText = document.getElementById('enable-sound-text');
 
-  // ---- Audio (uploaded chime file) ----
-  const chimeAudio = new Audio('/sounds/chime.mp3');
-  chimeAudio.preload = 'auto';
+  // ---- Audio ----
   let audioUnlocked = false;
 
-  // After a stretch with no sound, the OS audio output device can go idle
-  // and "cold start" on the next play() - clipping the first fraction of a
-  // second of audio while it spins back up (the symptom: room switches or
-  // idle gaps cause the chime's beginning to get cut off, only the second
-  // call sounds right). A continuously looping, genuinely silent stream
-  // keeps the device warm so real chimes never hit a cold start.
+  // Keep-alive: a looping silent stream prevents the TV's audio device going
+  // idle between calls, which would clip the start of the next chime.
   const keepAliveAudio = new Audio('/sounds/silence.wav');
   keepAliveAudio.loop = true;
   keepAliveAudio.preload = 'auto';
 
   function unlockAudio() {
     if (audioUnlocked) return;
-    audioUnlocked = true; // set immediately so a second rapid tap can't double-fire
-    // Play once (muted) so the browser counts this as the user gesture that
-    // unlocks audio - later programmatic play() calls then work without a
-    // fresh gesture each time.
-    chimeAudio.muted = true;
-    chimeAudio.play()
-      .then(() => {
-        chimeAudio.pause();
-        chimeAudio.currentTime = 0;
-        chimeAudio.muted = false;
-      })
-      .catch(() => {
-        chimeAudio.muted = false;
-      })
-      .finally(() => {
-        keepAliveAudio.play().catch(() => {});
-        // Visible confirmation it worked, instead of the overlay just
-        // silently vanishing - then hide it a moment later.
-        soundOverlayText.textContent = 'Sound enabled';
-        soundOverlay.classList.add('confirmed');
-        setTimeout(() => soundOverlay.classList.add('hidden'), 700);
-      });
+    audioUnlocked = true;
+    // Start keep-alive to warm the audio device. Skipping the muted-chime
+    // trick because some TV browsers (e.g. VIDAA OS) ignore the muted flag
+    // and play it audibly, causing an unwanted sound on tap.
+    keepAliveAudio.play().catch(() => {});
+    soundOverlayText.textContent = 'Sound enabled';
+    soundOverlay.classList.add('confirmed');
+    setTimeout(() => soundOverlay.classList.add('hidden'), 700);
   }
 
   // Listen on the overlay itself, and also on the whole document (capture
@@ -56,8 +36,10 @@
 
   function playCallChime() {
     if (!audioUnlocked) return;
-    chimeAudio.currentTime = 0;
-    chimeAudio.play().catch(() => {});
+    // Create a fresh Audio element each time — TV browsers (e.g. VIDAA OS)
+    // often silently fail when replaying a reused element.
+    const chime = new Audio('/sounds/chime.mp3');
+    chime.play().catch(() => {});
   }
 
   // ---- Display image ----
